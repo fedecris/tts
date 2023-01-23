@@ -38,15 +38,6 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        FloatingActionButton fab = findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
-
         listener = new TTSListener();
         tts = new TextToSpeech(getBaseContext(), listener);
     }
@@ -137,7 +128,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     protected void scanFailure1() {
-        tts.speak("Error al iniciar el scan. Verificar permisos.", TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
+        tts.speak("Error al iniciar el scan. Demasiados intentos o validar permisos.", TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
     }
 
     protected void scanFailure2() {
