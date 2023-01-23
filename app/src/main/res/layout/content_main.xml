@@ -48,7 +48,7 @@
         android:ems="10"
         android:inputType="textPersonName"
         android:singleLine="false"
-        android:text="Hola mundo y hola a toda la gilada"
+        android:text="Hola mundo!"
         android:textSize="12sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -56,8 +56,8 @@
 
     <EditText
         android:id="@+id/editTextTextMultiLine"
-        android:layout_width="350dp"
-        android:layout_height="316dp"
+        android:layout_width="355dp"
+        android:layout_height="210dp"
         android:layout_marginTop="48dp"
         android:ems="10"
         android:gravity="start|top"
@@ -66,5 +66,18 @@
         app:layout_constraintHorizontal_bias="0.497"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/button3" />
+
+    <EditText
+        android:id="@+id/editTextLocationName"
+        android:layout_width="332dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="32dp"
+        android:ems="10"
+        android:inputType="textPersonName"
+        android:text="Nombre de la ubicacion"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.493"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/editTextTextMultiLine" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

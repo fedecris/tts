@@ -113,7 +113,8 @@ public class MainActivity extends AppCompatActivity {
             // scan failure handling
             scanFailure1();
         } else {
-            tts.speak("Escaneando, por favor espere un toque.", TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
+            EditText locName = findViewById(R.id.editTextLocationName);
+            tts.speak("Escaneando intensidades para " + locName.getText(), TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
         }
     }
 
