@@ -136,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     protected void scanFailure1() {
-        tts.speak("Error al iniciar el scan.", TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
+        tts.speak("Error al iniciar el scan. Verificar permisos.", TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
     }
 
     protected void scanFailure2() {
