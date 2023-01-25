@@ -22,13 +22,33 @@ import android.view.MenuItem;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
+    // Niveles de intensidad
+    static final int MAX_LEVELS = 100;
+
     TTSListener listener;
     TextToSpeech tts;
+
+    // Nombre de la ubicacion que se está escaneando actualmente
+    EditText currentlocationName;
+
+    // El total de scans completo para una ubicacion.
+    // Para un location tenemos una list de scans (cuantos más scans para una ubicacion más preciso).
+    // Cada scan tiene su lista de intensidad segun su BSSID: location -> scan list -> intensidades list
+    // Ej:
+    //  biblioteca  -> Scan 1   -> BBSID_A 96
+    //                          -> BBSID_B 87
+    //  biblioteca  -> Scan 2   -> BBSID_A 99
+    //                          -> BBSID_B 88
+    //  alumnos     -> Scan 1   -> BBSID_A 73
+    //                          -> BBSID_B 68
+    HashMap<String, List<List<ScanResult>>> generalScan = new HashMap<>();
 
 
     @Override
@@ -40,6 +60,7 @@ public class MainActivity extends AppCompatActivity {
 
         listener = new TTSListener();
         tts = new TextToSpeech(getBaseContext(), listener);
+        currentlocationName = findViewById(R.id.editTextLocationName);
     }
 
     @Override
@@ -104,21 +125,26 @@ public class MainActivity extends AppCompatActivity {
             // scan failure handling
             scanFailure1();
         } else {
-            EditText locName = findViewById(R.id.editTextLocationName);
-            tts.speak("Escaneando intensidades para " + locName.getText(), TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
+            tts.speak("Escaneando intensidades para " + currentlocationName.getText(), TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
         }
     }
 
     protected void scanSuccess() {
         WifiManager wifiManager = (WifiManager) getBaseContext().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         StringBuffer result = new StringBuffer();
-        int maxLevels = 100;
 
         List<ScanResult> wifiList = wifiManager.getScanResults();
         Collections.sort(wifiList, (ScanResult sc1, ScanResult sc2) ->  { return new Integer(sc2.level).compareTo(new Integer(sc1.level)); } );
 
+        // incorporar al maestro de scans el nuevo scan en la lista de scans para la ubicacion dada
+        if (generalScan.get(currentlocationName.getText().toString()) == null) {
+            generalScan.put(currentlocationName.getText().toString(), new ArrayList<>());
+        }
+        generalScan.get(currentlocationName.getText().toString()).add(wifiList);
+
+        // Visualizacion de info
         for (ScanResult scanResult : wifiList) {
-            int level = WifiManager.calculateSignalLevel(scanResult.level, maxLevels);
+            int level = WifiManager.calculateSignalLevel(scanResult.level, MAX_LEVELS);
             result.append("[").append(level).append("%] ");
             result.append(scanResult.BSSID).append("\n");
         }
@@ -142,4 +168,14 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+
+    public void showTotalScans(View v) {
+        StringBuffer response = new StringBuffer();
+
+        for(String location : generalScan.keySet()) {
+            response.append("En ubicacion " + location + " se realizaron " + generalScan.get(location).size() + " escaneos. ");
+        }
+
+        tts.speak(response.toString(), TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
+    }
 }
