@@ -15,6 +15,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
 import android.speech.tts.TextToSpeech;
+import android.util.Log;
 import android.view.View;
 
 import android.view.Menu;
@@ -34,6 +35,8 @@ public class MainActivity extends AppCompatActivity {
 
     TTSListener listener;
     TextToSpeech tts;
+    IntentFilter intentFilter;
+    boolean registered = false;
 
     // Nombre de la ubicacion que se está escaneando actualmente
     EditText currentlocationName;
@@ -117,9 +120,12 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-        IntentFilter intentFilter = new IntentFilter();
+        intentFilter = new IntentFilter();
         intentFilter.addAction(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
-        getBaseContext().getApplicationContext().registerReceiver(wifiScanReceiver, intentFilter);
+        if (!registered) {
+            getBaseContext().getApplicationContext().registerReceiver(wifiScanReceiver, intentFilter);
+            registered = true;
+        }
         boolean success = wifiManager.startScan();
         if (!success) {
             // scan failure handling
@@ -135,12 +141,16 @@ public class MainActivity extends AppCompatActivity {
 
         List<ScanResult> wifiList = wifiManager.getScanResults();
         Collections.sort(wifiList, (ScanResult sc1, ScanResult sc2) ->  { return new Integer(sc2.level).compareTo(new Integer(sc1.level)); } );
+        if (wifiList.size()==0) {
+            return;
+        }
 
         // incorporar al maestro de scans el nuevo scan en la lista de scans para la ubicacion dada
-        if (generalScan.get(currentlocationName.getText().toString()) == null) {
-            generalScan.put(currentlocationName.getText().toString(), new ArrayList<>());
+        if (generalScan.get(currentlocationName.getText().toString().toLowerCase()) == null) {
+            generalScan.put(currentlocationName.getText().toString().toLowerCase(), new ArrayList<>());
         }
-        generalScan.get(currentlocationName.getText().toString()).add(wifiList);
+        generalScan.get(currentlocationName.getText().toString().toLowerCase()).add(wifiList);
+        Log.d("TTS", "Size del generalScan es " + generalScan.get(currentlocationName.getText().toString().toLowerCase()).size() );
 
         // Visualizacion de info
         for (ScanResult scanResult : wifiList) {
@@ -161,14 +171,6 @@ public class MainActivity extends AppCompatActivity {
         tts.speak("Error en el scan. ", TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
     }
 
-
-    public class TTSListener implements TextToSpeech.OnInitListener {
-        @Override
-        public void onInit(int status) {
-        }
-    }
-
-
     public void showTotalScans(View v) {
         StringBuffer response = new StringBuffer();
 
@@ -178,4 +180,11 @@ public class MainActivity extends AppCompatActivity {
 
         tts.speak(response.toString(), TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
     }
+
+    public class TTSListener implements TextToSpeech.OnInitListener {
+        @Override
+        public void onInit(int status) {
+        }
+    }
+
 }
