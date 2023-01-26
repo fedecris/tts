@@ -41,6 +41,9 @@ public class MainActivity extends AppCompatActivity {
     // Nombre de la ubicacion que se está escaneando actualmente
     EditText currentlocationName;
 
+    // Si es true, entonces  estamos evaluando la ubicacion contra las lecturas previamente realizadas
+    boolean evaluatingWhereAmI = false;
+
     // El total de scans completo para una ubicacion.
     // Para un location tenemos una list de scans (cuantos más scans para una ubicacion más preciso).
     // Cada scan tiene su lista de intensidad segun su BSSID: location -> scan list -> intensidades list
@@ -103,7 +106,13 @@ public class MainActivity extends AppCompatActivity {
         tts.speak("Nivel de la señal es " + level + " porciento.", TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
     }
 
+    /** Dispara la lectura de señales wifi para una ubicacion dada */
     public void singalSignature(View v) {
+        scanWifi(false);
+    }
+
+    /** Configuracion de lecturas de intensidades de señales wifi */
+    public void scanWifi(boolean evaluatingWhereAmI) {
         WifiManager wifiManager = (WifiManager) getBaseContext().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
 
         BroadcastReceiver wifiScanReceiver = new BroadcastReceiver() {
@@ -112,7 +121,7 @@ public class MainActivity extends AppCompatActivity {
                 boolean success = intent.getBooleanExtra(
                         WifiManager.EXTRA_RESULTS_UPDATED, false);
                 if (success) {
-                    scanSuccess();
+                    scanSuccess(evaluatingWhereAmI);
                 } else {
                     // scan failure handling
                     scanFailure2();
@@ -131,11 +140,16 @@ public class MainActivity extends AppCompatActivity {
             // scan failure handling
             scanFailure1();
         } else {
-            tts.speak("Escaneando intensidades para " + currentlocationName.getText(), TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
+            if (evaluatingWhereAmI) {
+                tts.speak("Analizando tu ubicacion actual", TextToSpeech.QUEUE_ADD, null, "" + System.nanoTime());
+            } else {
+                tts.speak("Escaneando intensidades para " + currentlocationName.getText(), TextToSpeech.QUEUE_ADD, null, "" + System.nanoTime());
+            }
         }
     }
 
-    protected void scanSuccess() {
+    /** Recoleccion de datos o evaluacion de ubicacion */
+    protected void scanSuccess(boolean evaluatingWhereAmI) {
         WifiManager wifiManager = (WifiManager) getBaseContext().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         StringBuffer result = new StringBuffer();
 
@@ -145,22 +159,26 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        // incorporar al maestro de scans el nuevo scan en la lista de scans para la ubicacion dada
-        if (generalScan.get(currentlocationName.getText().toString().toLowerCase()) == null) {
-            generalScan.put(currentlocationName.getText().toString().toLowerCase(), new ArrayList<>());
-        }
-        generalScan.get(currentlocationName.getText().toString().toLowerCase()).add(wifiList);
-        Log.d("TTS", "Size del generalScan es " + generalScan.get(currentlocationName.getText().toString().toLowerCase()).size() );
+        if (evaluatingWhereAmI) {
+            evaluateLocation(wifiList);
+        } else {
+            // incorporar al maestro de scans el nuevo scan en la lista de scans para la ubicacion dada
+            if (generalScan.get(currentlocationName.getText().toString().toLowerCase()) == null) {
+                generalScan.put(currentlocationName.getText().toString().toLowerCase(), new ArrayList<>());
+            }
+            generalScan.get(currentlocationName.getText().toString().toLowerCase()).add(wifiList);
+            Log.d("TTS", "Size del generalScan es " + generalScan.get(currentlocationName.getText().toString().toLowerCase()).size());
 
-        // Visualizacion de info
-        for (ScanResult scanResult : wifiList) {
-            int level = WifiManager.calculateSignalLevel(scanResult.level, MAX_LEVELS);
-            result.append("[").append(level).append("%] ");
-            result.append(scanResult.BSSID).append("\n");
-        }
+            // Visualizacion de info
+            for (ScanResult scanResult : wifiList) {
+                int level = WifiManager.calculateSignalLevel(scanResult.level, MAX_LEVELS);
+                result.append("[").append(level).append("%] ");
+                result.append(scanResult.BSSID).append("\n");
+            }
 
-        EditText et = findViewById(R.id.editTextTextMultiLine);
-        et.setText(result.toString());
+            EditText et = findViewById(R.id.editTextTextMultiLine);
+            et.setText(result.toString());
+        }
     }
 
     protected void scanFailure1() {
@@ -171,14 +189,30 @@ public class MainActivity extends AppCompatActivity {
         tts.speak("Error en el scan. ", TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
     }
 
+    /** Detalles sobre el numero de lecturas realizadas por ubicacion  */
     public void showTotalScans(View v) {
         StringBuffer response = new StringBuffer();
+
+        if (generalScan.keySet().size()==0) {
+            tts.speak("No hay informacion recolectada", TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
+            return;
+        }
 
         for(String location : generalScan.keySet()) {
             response.append("En ubicacion " + location + " se realizaron " + generalScan.get(location).size() + " escaneos. ");
         }
 
         tts.speak(response.toString(), TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
+    }
+
+    /** Dispara la evaludacion de ubicacion */
+    public void whereAmI(View v) {
+        scanWifi(true);
+    }
+
+    /** Determina cual es la mejor opcion de ubicacion en funcion de los datos registrados y la lectura de señal actual */
+    protected void evaluateLocation(List<ScanResult> wifiList) {
+        // TODO: Pendiente a implementar
     }
 
     public class TTSListener implements TextToSpeech.OnInitListener {
