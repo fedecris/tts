@@ -27,6 +27,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -41,21 +43,20 @@ public class MainActivity extends AppCompatActivity {
     // Nombre de la ubicacion que se está escaneando actualmente
     EditText currentlocationName;
 
-    // Si es true, entonces  estamos evaluando la ubicacion contra las lecturas previamente realizadas
-    boolean evaluatingWhereAmI = false;
-
     // El total de scans completo para una ubicacion.
     // Para un location tenemos una list de scans (cuantos más scans para una ubicacion más preciso).
     // Cada scan tiene su lista de intensidad segun su BSSID: location -> scan list -> intensidades list
     // Ej:
-    //  biblioteca  -> Scan 1   -> BBSID_A 96
-    //                          -> BBSID_B 87
-    //  biblioteca  -> Scan 2   -> BBSID_A 99
-    //                          -> BBSID_B 88
-    //  alumnos     -> Scan 1   -> BBSID_A 73
-    //                          -> BBSID_B 68
-    HashMap<String, List<List<ScanResult>>> generalScan = new HashMap<>();
+    //  biblioteca  -> Scan 1   -> BBSID_-> 96
+    //                          -> BBSID_-> 87
+    //  biblioteca  -> Scan 2   -> BBSID_-> 99
+    //                          -> BBSID_-> 88
+    //  alumnos     -> Scan 1   -> BBSID_-> 73
+    //                          -> BBSID_-> 68
+    Map<String, List<Map<String, Integer>>> generalScan = new HashMap<>();
 
+    // Se esta evaluando la posicion o se esta realizando lectura?
+    boolean evaluatingWhereAmI = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -108,11 +109,12 @@ public class MainActivity extends AppCompatActivity {
 
     /** Dispara la lectura de señales wifi para una ubicacion dada */
     public void singalSignature(View v) {
-        scanWifi(false);
+        evaluatingWhereAmI = false;
+        scanWifi();
     }
 
     /** Configuracion de lecturas de intensidades de señales wifi */
-    public void scanWifi(boolean evaluatingWhereAmI) {
+    public void scanWifi() {
         WifiManager wifiManager = (WifiManager) getBaseContext().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
 
         BroadcastReceiver wifiScanReceiver = new BroadcastReceiver() {
@@ -121,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
                 boolean success = intent.getBooleanExtra(
                         WifiManager.EXTRA_RESULTS_UPDATED, false);
                 if (success) {
-                    scanSuccess(evaluatingWhereAmI);
+                    scanSuccess();
                 } else {
                     // scan failure handling
                     scanFailure2();
@@ -149,7 +151,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /** Recoleccion de datos o evaluacion de ubicacion */
-    protected void scanSuccess(boolean evaluatingWhereAmI) {
+    protected void scanSuccess() {
         WifiManager wifiManager = (WifiManager) getBaseContext().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         StringBuffer result = new StringBuffer();
 
@@ -162,19 +164,23 @@ public class MainActivity extends AppCompatActivity {
         if (evaluatingWhereAmI) {
             evaluateLocation(wifiList);
         } else {
-            // incorporar al maestro de scans el nuevo scan en la lista de scans para la ubicacion dada
+            // incorporar al maestro de scans el nuevo escaneo en la lista de scans para la ubicacion dada
             if (generalScan.get(currentlocationName.getText().toString().toLowerCase()) == null) {
                 generalScan.put(currentlocationName.getText().toString().toLowerCase(), new ArrayList<>());
             }
-            generalScan.get(currentlocationName.getText().toString().toLowerCase()).add(wifiList);
-            Log.d("TTS", "Size del generalScan es " + generalScan.get(currentlocationName.getText().toString().toLowerCase()).size());
+            //Log.d("TTS", "Size del generalScan es " + generalScan.get(currentlocationName.getText().toString().toLowerCase()).size());
 
-            // Visualizacion de info
+            // Visualizacion de info y carga en la map
+            HashMap<String, Integer> pair = new HashMap<>();
             for (ScanResult scanResult : wifiList) {
                 int level = WifiManager.calculateSignalLevel(scanResult.level, MAX_LEVELS);
                 result.append("[").append(level).append("%] ");
                 result.append(scanResult.BSSID).append("\n");
+
+                // Nueva entrada en la map de este escaneo para esta localizacion
+                pair.put(scanResult.BSSID, level);
             }
+            generalScan.get(currentlocationName.getText().toString().toLowerCase()).add(pair);
 
             EditText et = findViewById(R.id.editTextTextMultiLine);
             et.setText(result.toString());
@@ -207,12 +213,41 @@ public class MainActivity extends AppCompatActivity {
 
     /** Dispara la evaludacion de ubicacion */
     public void whereAmI(View v) {
-        scanWifi(true);
+        evaluatingWhereAmI = true;
+        scanWifi();
     }
 
     /** Determina cual es la mejor opcion de ubicacion en funcion de los datos registrados y la lectura de señal actual */
     protected void evaluateLocation(List<ScanResult> wifiList) {
-        // TODO: Pendiente a implementar
+        String minLoc = null;
+        Integer minValue = Integer.MAX_VALUE;
+
+        // Ubicaciones
+        for (String location : generalScan.keySet()) {
+            String curMinLoc = location;
+            Integer curMinValue = 0;
+            // Por cada entrada en la lista de intensidades, comparamos con las recolectadas previamente para la location que esta siendo evaluada
+            for (ScanResult result : wifiList) {
+                // Lecturas guardadas (puede haber varias)
+                for (Map<String, Integer> values : generalScan.get(location)) {
+                    // calcular el delta, considerando la posibildad que el scaneo actual haya encontrado un BSSID que no tenemos en el historico
+                    curMinValue = curMinValue + Math.abs(result.level - (values.get(result.BSSID)==null ? 0 : values.get(result.BSSID)));
+                }
+            }
+            // Tenemos un nuevo mínimo?
+            if (curMinValue < minValue) {
+                minValue = curMinValue;
+                minLoc = curMinLoc;
+            }
+        }
+
+        if (minLoc == null) {
+            tts.speak("No pude determinar la ubicacion actual", TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
+            return;
+        }
+
+        tts.speak("Deberias estar proximo a la ubicacion " + minLoc, TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
+
     }
 
     public class TTSListener implements TextToSpeech.OnInitListener {
