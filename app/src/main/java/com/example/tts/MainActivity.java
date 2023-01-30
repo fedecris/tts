@@ -98,13 +98,17 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void signalStrengh(View v) {
-        WifiManager wifiManager = (WifiManager) getBaseContext().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-        int maxLevels = 100;
-        // Level of current connection
-        int rssi = wifiManager.getConnectionInfo().getRssi();
-        int level = WifiManager.calculateSignalLevel(rssi, maxLevels);
-        // wifi= uai fai :)
-        tts.speak("Nivel de la señal es " + level + " porciento.", TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
+        try {
+            WifiManager wifiManager = (WifiManager) getBaseContext().getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            int maxLevels = 100;
+            // Level of current connection
+            int rssi = wifiManager.getConnectionInfo().getRssi();
+            int level = WifiManager.calculateSignalLevel(rssi, maxLevels);
+            // wifi= uai fai :)
+            tts.speak("Nivel de la señal es " + level + " porciento.", TextToSpeech.QUEUE_ADD, null, "" + System.nanoTime());
+        } catch (Exception e) {
+            tts.speak("No fue posible determinar el nivel de la señal.", TextToSpeech.QUEUE_ADD, null, "" + System.nanoTime());
+        }
     }
 
     /** Dispara la lectura de señales wifi para una ubicacion dada */
@@ -174,8 +178,9 @@ public class MainActivity extends AppCompatActivity {
             HashMap<String, Integer> pair = new HashMap<>();
             for (ScanResult scanResult : wifiList) {
                 int level = WifiManager.calculateSignalLevel(scanResult.level, MAX_LEVELS);
-                result.append("[").append(level).append("%] ");
-                result.append(scanResult.BSSID).append("\n");
+                result.append("[").append(level).append("%] ")
+                        .append(scanResult.BSSID)
+                        .append(" (").append(scanResult.SSID).append(")\n");
 
                 // Nueva entrada en la map de este escaneo para esta localizacion
                 pair.put(scanResult.BSSID, level);
@@ -197,6 +202,7 @@ public class MainActivity extends AppCompatActivity {
 
     /** Detalles sobre el numero de lecturas realizadas por ubicacion  */
     public void showTotalScans(View v) {
+        System.out.println(generalScanInfo());
         StringBuffer response = new StringBuffer();
 
         if (generalScan.keySet().size()==0) {
@@ -248,6 +254,23 @@ public class MainActivity extends AppCompatActivity {
 
         tts.speak("Deberias estar proximo a la ubicacion " + minLoc, TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
 
+    }
+
+    protected String generalScanInfo() {
+        StringBuffer ret = new StringBuffer();
+        // Por cada ubicacion
+        for (String location : generalScan.keySet()) {
+            ret.append("Ubicacion: ").append(location).append("\n");
+            // Por cada escaneo
+            for (int i=0; i<generalScan.get(location).size(); i++) {
+                ret.append("  Scan nro: ").append(i).append(("\n"));
+                // Por cada hotspot
+                for (String aScan : generalScan.get(location).get(i).keySet()) {
+                    ret.append("    ").append(aScan).append(": ").append(generalScan.get(location).get(i).get(aScan)).append("\n");
+                }
+            }
+        }
+        return ret.toString();
     }
 
     public class TTSListener implements TextToSpeech.OnInitListener {
