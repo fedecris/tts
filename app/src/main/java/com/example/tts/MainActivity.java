@@ -249,6 +249,9 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        EditText et = findViewById(R.id.editTextTextMultiLine);
+        et.setText("Deberias estar proximo a la ubicacion " + minLoc);
+
         speak("Deberias estar proximo a la ubicacion " + minLoc);
 
     }
