@@ -8,9 +8,6 @@ import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.snackbar.Snackbar;
-
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
@@ -21,14 +18,12 @@ import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.EditText;
-import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -94,7 +89,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void iniciar(View v) {
         EditText et = findViewById(R.id.editTextTextPersonName);
-        tts.speak(et.getText(), TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
+        speak(et.getText().toString());
     }
 
     public void signalStrengh(View v) {
@@ -105,9 +100,9 @@ public class MainActivity extends AppCompatActivity {
             int rssi = wifiManager.getConnectionInfo().getRssi();
             int level = WifiManager.calculateSignalLevel(rssi, maxLevels);
             // wifi= uai fai :)
-            tts.speak("Nivel de la señal es " + level + " porciento.", TextToSpeech.QUEUE_ADD, null, "" + System.nanoTime());
+            speak("Nivel de la señal es " + level + " porciento.");
         } catch (Exception e) {
-            tts.speak("No fue posible determinar el nivel de la señal.", TextToSpeech.QUEUE_ADD, null, "" + System.nanoTime());
+            speak("No fue posible determinar el nivel de la señal.");
         }
     }
 
@@ -147,9 +142,9 @@ public class MainActivity extends AppCompatActivity {
             scanFailure1();
         } else {
             if (evaluatingWhereAmI) {
-                tts.speak("Analizando tu ubicacion actual", TextToSpeech.QUEUE_ADD, null, "" + System.nanoTime());
+                speak("Analizando tu ubicacion actual");
             } else {
-                tts.speak("Escaneando intensidades para " + currentlocationName.getText(), TextToSpeech.QUEUE_ADD, null, "" + System.nanoTime());
+                speak("Escaneando intensidades para " + currentlocationName.getText());
             }
         }
     }
@@ -166,7 +161,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (evaluatingWhereAmI) {
-            evaluateLocation(wifiList);
+            estimateLocation(wifiList);
         } else {
             // incorporar al maestro de scans el nuevo escaneo en la lista de scans para la ubicacion dada
             if (generalScan.get(currentlocationName.getText().toString().toLowerCase()) == null) {
@@ -193,28 +188,30 @@ public class MainActivity extends AppCompatActivity {
     }
 
     protected void scanFailure1() {
-        tts.speak("Error al iniciar el scan. Demasiados intentos o validar permisos.", TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
+        speak("Error al iniciar el scan. Demasiados intentos o validar permisos.");
     }
 
     protected void scanFailure2() {
-        tts.speak("Error en el scan. ", TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
+        speak("Error en el scan. ");
     }
 
     /** Detalles sobre el numero de lecturas realizadas por ubicacion  */
     public void showTotalScans(View v) {
-        System.out.println(generalScanInfo());
         StringBuffer response = new StringBuffer();
 
         if (generalScan.keySet().size()==0) {
-            tts.speak("No hay informacion recolectada", TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
+            speak("No hay informacion recolectada");
             return;
         }
+
+        EditText et = findViewById(R.id.editTextTextMultiLine);
+        et.setText(generalScanInfo());
 
         for(String location : generalScan.keySet()) {
             response.append("En ubicacion " + location + " se realizaron " + generalScan.get(location).size() + " escaneos. ");
         }
 
-        tts.speak(response.toString(), TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
+        speak(response.toString());
     }
 
     /** Dispara la evaludacion de ubicacion */
@@ -224,7 +221,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /** Determina cual es la mejor opcion de ubicacion en funcion de los datos registrados y la lectura de señal actual */
-    protected void evaluateLocation(List<ScanResult> wifiList) {
+    protected void estimateLocation(List<ScanResult> wifiList) {
         String minLoc = null;
         Integer minValue = Integer.MAX_VALUE;
 
@@ -248,11 +245,11 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (minLoc == null) {
-            tts.speak("No pude determinar la ubicacion actual", TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
+            speak("No pude determinar la ubicacion actual");
             return;
         }
 
-        tts.speak("Deberias estar proximo a la ubicacion " + minLoc, TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
+        speak("Deberias estar proximo a la ubicacion " + minLoc);
 
     }
 
@@ -271,6 +268,10 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         return ret.toString();
+    }
+
+    protected void speak(String text) {
+        tts.speak(text, TextToSpeech.QUEUE_ADD, null, ""+System.nanoTime());
     }
 
     public class TTSListener implements TextToSpeech.OnInitListener {
